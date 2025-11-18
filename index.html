@@ -52,6 +52,8 @@
 
 <div class="counters" id="counters"></div>
 
+<div id="timer" class="small"><strong>Time:</strong> 0:00</div>
+
 <div class="small"><strong>Solved:</strong></div>
 <ul id="solvedList" class="solved-list"></ul>
 
@@ -90,6 +92,10 @@ let currentPath = [];        // array of indices (0..8)
 let mouseDown = false;
 let solvedWords = new Set();
 let remaining = new Set(ALLOWED_WORDS);
+
+let timerInterval = null;
+let startTime = null;
+let timerRunning = false;
 
 /* Precompute: map char -> set(words that contain char) for graying logic */
 const charToAllWords = {};
@@ -278,6 +284,14 @@ function processSubmit(){
   // success
   solvedWords.add(guess);
   remaining.delete(guess);
+
+  // start timer on first solved word
+  if (!timerRunning) {
+      timerRunning = true;
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+  }
+  
   // record solved usage but DO NOT add the 'solved' class that forces black
   path.forEach(i=>{
     cells[i].el.classList.remove('selected');
@@ -287,6 +301,12 @@ function processSubmit(){
   clearSelection();
   updateGrayOutLetters();
   updateCounters();
+
+    // stop timer when game is complete
+  if (remaining.size === 0 && timerRunning) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+  }
 }
 
 /* clear button behavior */
@@ -305,6 +325,14 @@ resetBtn.addEventListener('click', ()=>{
   updateGrayOutLetters();
   updateCounters();
   clearMsg();
+
+  // reset timer
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerRunning = false;
+  startTime = null;
+  document.getElementById('timer').textContent = 'Time: 0:00';
+
 });
 
 /* ===================
@@ -328,6 +356,15 @@ function updateCounters(){
     html += `${L}-letter: ${rem}/${total} &nbsp; `;
   });
   countersEl.innerHTML = html;
+}
+
+function updateTimer() {
+  if (!startTime) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  document.getElementById('timer').textContent =
+    `Time: ${minutes}:${seconds.toString().padStart(2,'0')}`;
 }
 
 function updateGrayOutLetters(){
