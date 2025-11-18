@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mini Squardle</title>
+<style>
+    body {
+        font-family: sans-serif;
+        max-width: 400px;
+        margin: 20px auto;
+    }
+    #grid {
+        display: grid;
+        grid-template-columns: repeat(3, 60px);
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+    .cell {
+        width: 60px;
+        height: 60px;
+        font-size: 32px;
+        text-align: center;
+        line-height: 60px;
+        border: 2px solid black;
+        cursor: pointer;
+        user-select: none;
+    }
+    .gray {
+        color: #aaa;
+        border-color: #aaa;
+    }
+    #found {
+        margin-top: 20px;
+        font-size: 14px;
+    }
+</style>
+</head>
+<body>
+
+<h2>Mini Squardle (3×3)</h2>
+
+<div id="grid"></div>
+
+<div>
+    <strong>Remaining words:</strong>
+    <div id="counters"></div>
+</div>
+
+<div id="found"><strong>Solved:</strong></div>
+
+<script>
+// ===============================
+// CONFIGURATION
+// ===============================
+
+const gridLetters = [
+    "Y","T","R",
+    "A","I","H",
+    "B","D","C"
+];
+
+// Allowed words
+const words = [
+    "bait","bath","chia","chit","city","dirt","rich",
+    "birth","dirty","triad",
+    "birthday"
+];
+
+// Precompute by length for counters
+let wordsByLength = {};
+for (let w of words) {
+    let L = w.length;
+    if (!wordsByLength[L]) wordsByLength[L] = [];
+    wordsByLength[L].push(w);
+}
+let remaining = new Set(words);
+
+// Map letter → all words still possible containing letter
+function buildLetterUsage() {
+    let m = {};
+    for (let w of remaining) {
+        for (let ch of w) {
+            if (!m[ch]) m[ch] = 0;
+            m[ch]++;
+        }
+    }
+    return m;
+}
+
+// ===============================
+// BUILD GRID
+// ===============================
+const grid = document.getElementById("grid");
+const cells = [];
+
+gridLetters.forEach((letter, i) => {
+    const div = document.createElement("div");
+    div.className = "cell";
+    div.textContent = letter;
+    div.dataset.letter = letter;
+    cells.push(div);
+    grid.appendChild(div);
+});
+
+// Build adjacency
+const neighbors = {
+    0:[1,3,4],
+    1:[0,2,3,4,5],
+    2:[1,4,5],
+    3:[0,1,4,6,7],
+    4:[0,1,2,3,5,6,7,8],
+    5:[1,2,4,7,8],
+    6:[3,4,7],
+    7:[3,4,5,6,8],
+    8:[4,5,7]
+};
+
+// Track path
+let currentPath = [];
+let currentWord = "";
+
+// ===============================
+// CHECK WORD
+// ===============================
+function trySubmit() {
+    if (remaining.has(currentWord)) {
+        remaining.delete(currentWord);
+        document.getElementById("found").innerHTML += "<br>" + currentWord;
+        updateGrayLetters();
+        updateCounters();
+    }
+}
+
+// ===============================
+// LETTER GRAYING
+// ===============================
+function updateGrayLetters() {
+    const usage = buildLetterUsage();
+    for (let c of cells) {
+        let letter = c.dataset.letter.toLowerCase();
+        if (!usage[letter]) {
+            c.classList.add("gray");
+        } else {
+            c.classList.remove("gray");
+        }
+    }
+}
+
+// ===============================
+// COUNTERS
+// ===============================
+function updateCounters() {
+    let html = "";
+    for (let L in wordsByLength) {
+        let total = wordsByLength[L].length;
+        let rem = wordsByLength[L].filter(w => remaining.has(w)).length;
+        html += `${L}-letter: ${rem}/${total}<br>`;
+    }
+    document.getElementById("counters").innerHTML = html;
+}
+
+// ===============================
+// INPUT HANDLER
+// ===============================
+cells.forEach((cell, index) => {
+    cell.addEventListener("click", () => {
+        // Prevent reusing same cell
+        if (currentPath.includes(index)) return;
+
+        // Must connect to previous cell
+        if (currentPath.length > 0) {
+            let prev = currentPath[currentPath.length - 1];
+            if (!neighbors[prev].includes(index)) return;
+        }
+
+        // Extend path
+        currentPath.push(index);
+        currentWord += cell.dataset.letter.toLowerCase();
+
+        // Submit if matching any complete word
+        for (let w of words) {
+            if (currentWord === w) trySubmit();
+        }
+
+        // If path longer than max word, reset
+        if (currentWord.length > 9) {
+            currentPath = [];
+            currentWord = "";
+        }
+    });
+});
+
+// Initialize
+updateGrayLetters();
+updateCounters();
+
+</script>
+
+</body>
+</html>
