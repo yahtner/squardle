@@ -329,9 +329,9 @@ function updateGrayOutLetters(){
   // compute how many remaining words still reference each char
   const usage = {}; // char -> count
   remaining.forEach(w=>{
-    new Set(w.split('')).forEach(ch=>{
-      usage[ch] = (usage[ch]||0) + 1;
-    });
+      for (const ch of w) {
+          usage[ch] = 1;   // presence is enough; we only care if ANY word still uses this letter
+      }
   });
   // apply gray class to any cell whose char has usage 0
   Object.values(cells).forEach(cd=>{
